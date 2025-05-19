@@ -1,0 +1,4 @@
+*.avi
+__pycache__
+**/IMG/
+#code-examples/Python/invariant-ekf/IMG/*

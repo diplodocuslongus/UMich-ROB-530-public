@@ -86,12 +86,13 @@ if __name__ == "__main__":
     dt = 0.2
     gt = {}
     n = len(np.arange(0, l+dt, dt))
+    # Create a square path
     gt['x'] = np.hstack((np.arange(0, l+dt, dt).reshape(1, -1), l * np.ones([1, n]).reshape(1, -1),
                          np.arange(l, 0-dt, -dt).reshape(1, -1), np.zeros([1, n]).reshape(1, -1)))
     gt['y'] = np.hstack((np.zeros([1, n]).reshape(1, -1), np.arange(0, l+dt, dt).reshape(1, -1),
                          l * np.ones([1, n]).reshape(1, -1), np.arange(l, 0-dt, -dt).reshape(1, -1)))
 
-    # find the headings tangent to the path
+    # find the headings tangent to the path (0, 90, 180, 270 degrees)
     gt['h'] = [0]
     for i in range(1, gt['x'].shape[1]):
         gt['h'].append(np.arctan2(gt['y'][0, i] - gt['y'][0, i-1], gt['x'][0, i] - gt['x'][0, i - 1]))
@@ -140,11 +141,11 @@ if __name__ == "__main__":
     # build a system
     sys = {}
     # motion model noise covariance
-    sys['Q'] = np.diag(np.power([0.015, 0.01, 0.01], 2))
-    sys['A'] = np.eye(3)
-    sys['f'] = motion_model
-    sys['H'] = measurement_error_matrix
-    sys['N'] = np.diag(np.power([0.5, 0.5], 2))
+    sys['Q'] = np.diag(np.power([0.015, 0.01, 0.01], 2)) # input noise covariance
+    sys['A'] = np.eye(3) # error dynamics matrix # this is already I + A * dt cause A is zero
+    sys['f'] = motion_model # process model
+    sys['H'] = measurement_error_matrix # measurement error matrix
+    sys['N'] = np.diag(np.power([0.5, 0.5], 2)) # measurement noise covariance
 
     # se(2) Lie algebra basis twist = vec(omega, v1, v2)
     G1 = np.array([[0, -1, 0],
@@ -209,11 +210,14 @@ if __name__ == "__main__":
         m_id = []
         if not np.mod(i, skip):
             # get a landmark measurement using current true position of the robot
+            # every time, we observe two landmarks b1 and b2
+            # Y1 and Y2 are the noisy measurements of b1 and b2 using GT pose (H[i])
             m_dist, m_id = Map.query([gt['x'][0, i], gt['y'][0, i]], k=2)
             b1 = np.hstack((landmarks[m_id[0], :], 1))
             Y1 = np.dot(np.linalg.inv(H[i]), b1).reshape(-1, 1) + np.vstack((np.dot(LN, np.random.randn(2, 1)), 0))
             b2 = np.hstack((landmarks[m_id[1], :], 1))
             Y2 = np.dot(np.linalg.inv(H[i]), b2).reshape(-1, 1) + np.vstack((np.dot(LN, np.random.randn(2, 1)), 0))
+            print('b1 Y1 b2 Y2', b1, Y1, b2, Y2)
             # correction based on the measurements
             iekf_filter.correction(Y1, b1, Y2, b2)
 
